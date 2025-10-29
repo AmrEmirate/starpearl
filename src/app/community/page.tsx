@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 
@@ -49,7 +48,7 @@ export default function CommunityPage() {
         author: "You",
         avatar: "/placeholder.svg?height=48&width=48",
         content: newPost,
-        image: null,
+        image: "",
         likes: 0,
         comments: 0,
         timestamp: "just now",
@@ -61,7 +60,6 @@ export default function CommunityPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Header />
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
