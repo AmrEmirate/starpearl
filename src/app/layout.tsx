@@ -11,7 +11,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Starpearl - Marketplace",
   description: "Discover unique accessories on Starpearl",
-  generator: "v0.app",
 }
 
 export default function RootLayout({
