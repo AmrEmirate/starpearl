@@ -1,61 +1,65 @@
-"use client"
+"use client";
 
-import { createContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useState, useEffect, type ReactNode } from "react";
+import { api, setAuthToken } from "@/services/api";
 
-export type UserRole = "admin" | "seller" | "buyer"
+export type UserRole = "ADMIN" | "SELLER" | "BUYER";
 
 export interface User {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-  avatar?: string
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
-  user: User | null
-  loading: boolean
-  login: (email: string, password: string, role: UserRole) => Promise<void>
-  logout: () => void
-  isAuthenticated: boolean
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => void;
+  isAuthenticated: boolean;
+  setUser: (user: User | null) => void;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
+    const storedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+
+    if (storedUser && token) {
       try {
-        setUser(JSON.parse(storedUser))
+        setUser(JSON.parse(storedUser));
+        setAuthToken(token);
       } catch (error) {
-        console.error("Failed to parse stored user:", error)
+        console.error("Failed to parse stored user:", error);
+        logout();
       }
     }
-    setLoading(false)
-  }, [])
+    setLoading(false);
+  }, []);
 
-  const login = async (email: string, password: string, role: UserRole) => {
-    // Simulate API call
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: email.split("@")[0],
-      email,
-      role,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-    }
-    setUser(newUser)
-    localStorage.setItem("user", JSON.stringify(newUser))
-  }
+  const login = async (email: string, password: string): Promise<User> => {
+    const response = await api.post("/auth/login", { email, password });
+    const { user, token } = response.data.data;
+
+    setUser(user);
+    localStorage.setItem("user", JSON.stringify(user));
+    setAuthToken(token);
+    
+    return user;
+  };
 
   const logout = () => {
-    setUser(null)
-    localStorage.removeItem("user")
-  }
+    setUser(null);
+    setAuthToken(null);
+    localStorage.removeItem("user");
+  };
 
   return (
     <AuthContext.Provider
@@ -65,9 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         isAuthenticated: !!user,
+        setUser
       }}
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }

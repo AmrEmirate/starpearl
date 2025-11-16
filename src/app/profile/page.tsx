@@ -1,86 +1,143 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/use-auth";
+import { api } from "@/services/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import { useState } from "react"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+// Hapus mock data:
+// const userProfile = { ... }
+// const orders = [ ... ]
+// const wishlist = [ ... ]
 
-const userProfile = {
-  name: "Sarah Chen",
-  email: "sarah.chen@example.com",
-  phone: "+1 (555) 123-4567",
-  avatar: "SC",
-  joinDate: "January 2024",
-  bio: "Fashion enthusiast and jewelry collector",
-  address: "123 Main Street, New York, NY 10001",
+// Tipe data untuk profile
+interface ProfileData {
+  name: string;
+  email: string;
+  phone: string | null;
+  avatarUrl: string | null;
+  joinDate: string; // Kita akan format ini
+  bio: string | null;
+  address: string | null;
 }
 
-const orders = [
-  {
-    id: "ORD-2025-001",
-    date: "2025-01-15",
-    total: 250000,
-    status: "Delivered",
-    items: 3,
-  },
-  {
-    id: "ORD-2025-002",
-    date: "2025-01-10",
-    total: 125000,
-    status: "In Transit",
-    items: 1,
-  },
-  {
-    id: "ORD-2025-003",
-    date: "2025-01-05",
-    total: 89000,
-    status: "Delivered",
-    items: 1,
-  },
-]
-
-const wishlist = [
-  {
-    id: 1,
-    name: "Vintage Chain Bracelet",
-    price: 98000,
-    image: "/vintage-chain-bracelet.jpg",
-    rating: 4.6,
-  },
-  {
-    id: 2,
-    name: "Crystal Earrings",
-    price: 75000,
-    image: "/crystal-earrings.jpg",
-    rating: 4.9,
-  },
-  {
-    id: 3,
-    name: "Layered Gold Necklace",
-    price: 145000,
-    image: "/layered-gold-necklace.jpg",
-    rating: 4.8,
-  },
-]
-
 export default function ProfilePage() {
-  const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState(userProfile)
+  const { user, logout, setUser: setAuthUser } = useAuth(); // Ambil 'user' dari context
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    bio: "",
+  });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const response = await api.get("/users/me");
+        const data = response.data.data;
+
+        const formattedData: ProfileData = {
+          name: data.name || "",
+          email: data.email || "",
+          phone: data.phone || "Not set",
+          avatarUrl: data.avatarUrl || null,
+          joinDate: new Date(data.createdAt).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+          }),
+          bio: data.bio || "No bio set.",
+          address: data.address || "No address set.",
+        };
+        
+        setProfileData(formattedData);
+        setFormData({
+          name: formattedData.name,
+          email: formattedData.email,
+          phone: formattedData.phone || "",
+          address: formattedData.address || "",
+          bio: formattedData.bio || "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    try {
+      // Kirim hanya data yang berubah dan diizinkan (saat ini hanya 'name')
+      const response = await api.patch("/users/me", {
+        name: formData.name,
+        // Anda bisa tambahkan field lain di sini setelah BE di-update
+      });
+      
+      const updatedUser = response.data.data;
+
+      // Update data di profile page
+      setProfileData((prev) => ({
+        ...prev!,
+        name: updatedUser.name,
+      }));
+
+      // Update data user di AuthContext dan localStorage
+      setAuthUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      // Di sini Anda bisa menambahkan toast error
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-background">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Skeleton className="h-24 w-full mb-8" />
+          <Skeleton className="h-10 w-full mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
+            <Skeleton className="h-40" />
+          </div>
+        </div>
+        <Footer />
+      </main>
+    );
   }
 
-  const handleSave = () => {
-    setIsEditing(false)
+  if (!profileData) {
+    return <div>Error loading profile.</div>;
+  }
+
+  const getAvatarFallback = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
   }
 
   return (
@@ -92,15 +149,16 @@ export default function ProfilePage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-6">
             <Avatar className="w-20 h-20">
+              <AvatarImage src={profileData.avatarUrl || ''} alt={profileData.name} />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                {userProfile.avatar}
+                {getAvatarFallback(profileData.name)}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-foreground mb-2">{userProfile.name}</h1>
-              <p className="text-muted-foreground mb-2">Member since {userProfile.joinDate}</p>
-              <p className="text-foreground">{userProfile.bio}</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{profileData.name}</h1>
+              <p className="text-muted-foreground mb-2">Member since {profileData.joinDate}</p>
+              <p className="text-foreground">{profileData.bio}</p>
             </div>
 
             <div className="flex gap-2">
@@ -113,6 +171,7 @@ export default function ProfilePage() {
               </Button>
               <Button
                 variant="outline"
+                onClick={logout}
                 className="border-border bg-transparent text-destructive hover:bg-destructive/10"
               >
                 🚪 Sign Out
@@ -132,40 +191,25 @@ export default function ProfilePage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-foreground">Total Orders</h3>
-                  <div className="text-2xl">📦</div>
-                </div>
-                <p className="text-3xl font-bold text-foreground">12</p>
-                <p className="text-sm text-muted-foreground mt-2">Lifetime purchases</p>
-              </Card>
-
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-foreground">Total Spent</h3>
-                  <div className="text-2xl">💰</div>
-                </div>
-                <p className="text-3xl font-bold text-foreground">Rp 2.5M</p>
-                <p className="text-sm text-muted-foreground mt-2">Across all purchases</p>
-              </Card>
-
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-foreground">Wishlist Items</h3>
-                  <div className="text-2xl">❤️</div>
-                </div>
-                <p className="text-3xl font-bold text-foreground">{wishlist.length}</p>
-                <p className="text-sm text-muted-foreground mt-2">Saved for later</p>
-              </Card>
-            </div>
-
+            {/* ... (Konten statis overview bisa tetap di sini) ... */}
+            
             {/* Contact Information */}
             <Card className="p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">Contact Information</h2>
               {isEditing ? (
                 <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name" className="text-foreground">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="mt-2"
+                    />
+                  </div>
                   <div>
                     <Label htmlFor="email" className="text-foreground">
                       Email
@@ -174,34 +218,11 @@ export default function ProfilePage() {
                       id="email"
                       name="email"
                       value={formData.email}
-                      onChange={handleInputChange}
-                      className="mt-2"
+                      disabled
+                      className="mt-2 bg-muted"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="phone" className="text-foreground">
-                      Phone
-                    </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="address" className="text-foreground">
-                      Address
-                    </Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className="mt-2"
-                    />
-                  </div>
+                  {/* Tambahkan field lain di sini jika BE sudah mendukung */}
                   <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
                     Save Changes
                   </Button>
@@ -212,21 +233,21 @@ export default function ProfilePage() {
                     <div className="text-2xl">✉️</div>
                     <div>
                       <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="text-foreground">{formData.email}</p>
+                      <p className="text-foreground">{profileData.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-2xl">📱</div>
                     <div>
                       <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="text-foreground">{formData.phone}</p>
+                      <p className="text-foreground">{profileData.phone}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-2xl">📍</div>
                     <div>
                       <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="text-foreground">{formData.address}</p>
+                      <p className="text-foreground">{profileData.address}</p>
                     </div>
                   </div>
                 </div>
@@ -234,120 +255,23 @@ export default function ProfilePage() {
             </Card>
           </TabsContent>
 
-          {/* Orders Tab */}
-          <TabsContent value="orders" className="space-y-4">
-            {orders.map((order) => (
-              <Card key={order.id} className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-foreground">{order.id}</p>
-                    <p className="text-sm text-muted-foreground">{order.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-foreground">Rp {order.total.toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">{order.items} item(s)</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        order.status === "Delivered" ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                    <Button variant="outline" size="sm" className="border-border bg-transparent">
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+          {/* (Tabs Orders, Wishlist, Settings masih menggunakan mock data/statis) */}
+          <TabsContent value="orders">
+             {/* ... (Konten tab orders) ... */}
+             <p className="text-muted-foreground">Fitur riwayat pesanan akan segera hadir.</p>
           </TabsContent>
-
-          {/* Wishlist Tab */}
           <TabsContent value="wishlist">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {wishlist.map((item) => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative overflow-hidden rounded-t-lg bg-muted aspect-square">
-                    <img
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.name}
-                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{item.name}</h3>
-                    <div className="flex items-center gap-1 mb-3">
-                      {[...Array(5)].map((_, i) => (
-                        <span
-                          key={i}
-                          className={`text-lg ${i < Math.floor(item.rating) ? "text-primary" : "text-muted"}`}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-primary">Rp {item.price.toLocaleString()}</span>
-                      <Button size="sm" variant="outline" className="border-border bg-transparent">
-                        Add to Cart
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+             {/* ... (Konten tab wishlist) ... */}
+             <p className="text-muted-foreground">Fitur wishlist akan segera hadir.</p>
+          </TabsContent>
+           <TabsContent value="settings">
+             {/* ... (Konten tab settings) ... */}
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-bold text-foreground mb-4">Account Settings</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <div>
-                    <p className="font-medium text-foreground">Email Notifications</p>
-                    <p className="text-sm text-muted-foreground">Receive updates about orders and promotions</p>
-                  </div>
-                  <input type="checkbox" defaultChecked className="w-5 h-5" />
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <div>
-                    <p className="font-medium text-foreground">SMS Notifications</p>
-                    <p className="text-sm text-muted-foreground">Get SMS alerts for important updates</p>
-                  </div>
-                  <input type="checkbox" className="w-5 h-5" />
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <div>
-                    <p className="font-medium text-foreground">Two-Factor Authentication</p>
-                    <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="border-border bg-transparent">
-                    Enable
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 border-destructive/20 bg-destructive/5">
-              <h2 className="text-xl font-bold text-destructive mb-4">Danger Zone</h2>
-              <p className="text-muted-foreground mb-4">
-                Deleting your account is permanent and cannot be undone. All your data will be lost.
-              </p>
-              <Button
-                variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/10 bg-transparent"
-              >
-                Delete Account
-              </Button>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
 
       <Footer />
     </main>
-  )
+  );
 }

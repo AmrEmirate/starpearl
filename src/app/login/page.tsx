@@ -1,62 +1,73 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/hooks/use-auth"
-import type { UserRole } from "@/context/auth-context"
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import type { UserRole } from "@/context/auth-context";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { login } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const router = useRouter();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("demo@example.com");
+  const [password, setPassword] = useState("demo123");
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!selectedRole) {
-      setError("Please select a role")
-      return
+      setError("Please select a role");
+      return;
     }
 
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError("");
 
     try {
-      await login(email, password, selectedRole)
-      router.push(`/${selectedRole}`)
-    } catch (err) {
-      setError("Login failed. Please try again.")
+      const user = await login(email, password);
+
+      if (user.role !== selectedRole) {
+        setError(`Login failed. This account is a ${user.role.toLowerCase()}, not a ${selectedRole.toLowerCase()}.`);
+        return;
+      }
+      
+      const rolePath = user.role.toLowerCase();
+      router.push(`/${rolePath}`);
+
+    } catch (err: any) {
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError("Login failed. Please check your credentials.");
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const roles: { id: UserRole; name: string; description: string; icon: string }[] = [
     {
-      id: "buyer",
+      id: "BUYER",
       name: "Buyer",
       description: "Browse and purchase accessories",
       icon: "🛍️",
     },
     {
-      id: "seller",
+      id: "SELLER",
       name: "Seller",
       description: "Sell your accessories",
       icon: "🏪",
     },
     {
-      id: "admin",
+      id: "ADMIN",
       name: "Admin",
       description: "Manage the marketplace",
       icon: "⚙️",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center px-4">
@@ -70,7 +81,6 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Welcome back</p>
           </div>
 
-          {/* Role Selection */}
           <div className="mb-8">
             <label className="block text-sm font-semibold text-foreground mb-4">Select Your Role</label>
             <div className="grid grid-cols-3 gap-3">
@@ -89,7 +99,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
@@ -129,15 +138,8 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
-            <p className="text-xs font-semibold text-foreground mb-2">Demo Credentials:</p>
-            <p className="text-xs text-muted-foreground">Email: demo@example.com</p>
-            <p className="text-xs text-muted-foreground">Password: demo123</p>
-          </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
