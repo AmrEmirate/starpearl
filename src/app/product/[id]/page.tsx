@@ -27,7 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Star, Heart } from "lucide-react";
 import { SubmitReviewForm } from "@/components/product/submit-review-form";
 
 interface ProductDetail {
@@ -68,6 +68,8 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [togglingWishlist, setTogglingWishlist] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -133,6 +135,53 @@ export default function ProductDetailPage() {
 
     fetchReviews();
   }, [id]);
+
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!isAuthenticated || !id) return;
+
+      try {
+        const wishlistRes = await api.get("/wishlist");
+        const wishlistItems = wishlistRes.data.data?.items || [];
+        const isInWishlist = wishlistItems.some(
+          (item: any) => item.productId === id
+        );
+        setIsWishlisted(isInWishlist);
+      } catch (error) {
+        console.error("Failed to check wishlist status", error);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [isAuthenticated, id]);
+
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated) {
+      toast.error("Please login to use wishlist");
+      router.push("/login");
+      return;
+    }
+
+    if (!product) return;
+
+    setTogglingWishlist(true);
+    try {
+      if (isWishlisted) {
+        await api.delete(`/wishlist/${product.id}`);
+        setIsWishlisted(false);
+        toast.success("Removed from wishlist");
+      } else {
+        await api.post("/wishlist", { productId: product.id });
+        setIsWishlisted(true);
+        toast.success("Added to wishlist");
+      }
+    } catch (error) {
+      console.error("Failed to toggle wishlist", error);
+      toast.error("Failed to update wishlist");
+    } finally {
+      setTogglingWishlist(false);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
@@ -340,14 +389,29 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full text-lg py-6"
-              disabled={product.stock === 0}
-              onClick={handleAddToCart}
-            >
-              🛒 Add to Cart
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                size="lg"
+                className="flex-1 text-lg py-6"
+                disabled={product.stock === 0}
+                onClick={handleAddToCart}
+              >
+                🛒 Add to Cart
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="px-6"
+                onClick={handleToggleWishlist}
+                disabled={togglingWishlist}
+              >
+                <Heart
+                  className={`h-6 w-6 ${
+                    isWishlisted ? "fill-red-500 text-red-500" : ""
+                  }`}
+                />
+              </Button>
+            </div>
 
             <Separator />
 

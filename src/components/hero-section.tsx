@@ -1,8 +1,19 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { useStats } from "@/hooks/use-stats";
 
 export function HeroSection() {
+  const { stats, loading } = useStats();
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return `${Math.floor(num / 1000)}K+`;
+    }
+    return num.toString();
+  };
+
   return (
     <section className="relative overflow-hidden bg-background py-20 md:py-32">
       <div className="container mx-auto px-4">
@@ -13,30 +24,56 @@ export function HeroSection() {
                 Discover Amazing Products
               </h1>
               <p className="text-lg text-muted-foreground max-w-md">
-                Explore curated collections from trusted sellers and join a vibrant community of shoppers and creators.
+                Explore curated collections from trusted sellers and join a
+                vibrant community of shoppers and creators.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                Start Shopping →
-              </Button>
-              <Button size="lg" variant="outline">
-                Learn More
-              </Button>
+              <Link href="/browse">
+                <Button
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
+                >
+                  Start Shopping →
+                </Button>
+              </Link>
+              <Link href="#features">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  Learn More
+                </Button>
+              </Link>
             </div>
 
             <div className="flex items-center gap-8 pt-4">
               <div>
-                <p className="text-2xl font-bold text-foreground">50K+</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {loading
+                    ? "..."
+                    : stats
+                    ? formatNumber(stats.totalProducts)
+                    : "0"}
+                </p>
                 <p className="text-sm text-muted-foreground">Products</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">100K+</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {loading
+                    ? "..."
+                    : stats
+                    ? formatNumber(stats.totalUsers)
+                    : "0"}
+                </p>
                 <p className="text-sm text-muted-foreground">Happy Customers</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">4.9★</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {loading ? "..." : stats ? `${stats.averageRating}★` : "0★"}
+                </p>
                 <p className="text-sm text-muted-foreground">Average Rating</p>
               </div>
             </div>
@@ -55,5 +92,5 @@ export function HeroSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
