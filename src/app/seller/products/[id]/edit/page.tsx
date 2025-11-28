@@ -1,0 +1,241 @@
+"use client";
+
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { api } from "@/services/api";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+// Schema validasi (sama dengan add product)
+const productSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  price: z.coerce.number().min(100, "Price must be at least 100"),
+  stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
+  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+});
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+export default function EditProductPage() {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const params = useParams();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      price: 0,
+      stock: 0,
+      imageUrl: "",
+    },
+  });
+
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || user?.role !== "SELLER")) {
+      router.push("/login");
+      return;
+    }
+
+    if (isAuthenticated && user?.role === "SELLER") {
+      fetchProductDetails();
+    }
+  }, [isAuthenticated, authLoading, user, router, params.id]);
+
+  const fetchProductDetails = async () => {
+    try {
+      setIsLoadingData(true);
+      const response = await api.get(`/products/${params.id}`);
+      const product = response.data.data;
+
+      form.reset({
+        name: product.name,
+        description: product.description,
+        price: Number(product.price),
+        stock: product.stock,
+        imageUrl:
+          product.imageUrls && product.imageUrls.length > 0
+            ? product.imageUrls[0]
+            : "",
+      });
+    } catch (error) {
+      console.error("Failed to fetch product details", error);
+      toast.error("Failed to load product details");
+      router.push("/seller/products");
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const onSubmit = async (data: ProductFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...data,
+        imageUrls: data.imageUrl ? [data.imageUrl] : [],
+      };
+
+      await api.patch(`/products/${params.id}`, payload);
+      toast.success("Product updated successfully!");
+      router.push("/seller/products");
+    } catch (error: any) {
+      console.error("Failed to update product", error);
+      toast.error(error.response?.data?.message || "Failed to update product");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (authLoading || isLoadingData) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || user?.role !== "SELLER") {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Edit Product
+          </h1>
+          <p className="text-muted-foreground">Update your product details.</p>
+        </div>
+
+        <div className="bg-card border border-border rounded-lg p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Product Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Premium Cotton T-Shirt"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe your product..."
+                        className="resize-none h-32"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price (Rp)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stock</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Image URL (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://example.com/image.jpg"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Enter a direct link to an image of your product.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
+    </div>
+  );
+}

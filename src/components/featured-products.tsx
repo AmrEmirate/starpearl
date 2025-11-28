@@ -1,86 +1,128 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { api } from "@/services/api";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const products = [
-  {
-    id: 1,
-    name: "Premium Wireless Headphones",
-    price: "$199",
-    rating: 4.8,
-    reviews: 324,
-    image: "bg-gradient-to-br from-blue-400 to-blue-600",
-  },
-  {
-    id: 2,
-    name: "Minimalist Watch",
-    price: "$149",
-    rating: 4.9,
-    reviews: 512,
-    image: "bg-gradient-to-br from-purple-400 to-purple-600",
-  },
-  {
-    id: 3,
-    name: "Leather Backpack",
-    price: "$129",
-    rating: 4.7,
-    reviews: 287,
-    image: "bg-gradient-to-br from-amber-400 to-amber-600",
-  },
-  {
-    id: 4,
-    name: "Smart Water Bottle",
-    price: "$89",
-    rating: 4.6,
-    reviews: 156,
-    image: "bg-gradient-to-br from-cyan-400 to-cyan-600",
-  },
-]
+interface Product {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  images: string[];
+  store: {
+    name: string;
+  };
+}
 
 export function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await api.get("/products");
+        // Ambil 4 produk terbaru
+        setProducts(response.data.data.slice(0, 4));
+      } catch (error) {
+        console.error("Failed to fetch products", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-20 md:py-32 bg-secondary/30">
+        <div className="container mx-auto px-4">
+          <div className="mb-12">
+            <Skeleton className="h-10 w-64 mb-4" />
+            <Skeleton className="h-6 w-full max-w-2xl" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="flex justify-between pt-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 md:py-32 bg-secondary/30">
       <div className="container mx-auto px-4">
         <div className="mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Featured Products</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            Featured Products
+          </h2>
           <p className="text-muted-foreground max-w-2xl">
-            Handpicked selections from our community of trusted sellers. Discover quality products at great prices.
+            Handpicked selections from our community of trusted sellers.
+            Discover quality products at great prices.
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {products.map((product) => (
-            <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className={`h-48 ${product.image} relative flex items-center justify-center`}>
-                <Button size="icon" variant="secondary" className="absolute top-3 right-3 rounded-full">
-                  🛒
-                </Button>
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{product.name}</h3>
-                <div className="flex items-center gap-1 mb-3">
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <span
-                        key={i}
-                        className={`text-lg ${i < Math.floor(product.rating) ? "text-primary" : "text-muted"}`}
-                      >
-                        ★
-                      </span>
-                    ))}
+          {products.length === 0 ? (
+            <div className="col-span-4 text-center py-12 text-muted-foreground">
+              No products available yet.
+            </div>
+          ) : (
+            products.map((product) => (
+              <Card
+                key={product.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <div className="h-48 bg-muted relative flex items-center justify-center overflow-hidden">
+                  {product.images && product.images.length > 0 ? (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-4xl">📦</span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-foreground mb-1 line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    by {product.store?.name || "Unknown Store"}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-lg font-bold text-foreground">
+                      ${parseFloat(product.price).toFixed(2)}
+                    </span>
+                    <Link href={`/products/${product.id}`}>
+                      <Button size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
                   </div>
-                  <span className="text-xs text-muted-foreground">({product.reviews})</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-foreground">{product.price}</span>
-                  <Button size="sm" variant="outline">
-                    View
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))
+          )}
         </div>
 
         <div className="mt-12 text-center">
@@ -90,5 +132,5 @@ export function FeaturedProducts() {
         </div>
       </div>
     </section>
-  )
+  );
 }

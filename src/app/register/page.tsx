@@ -3,20 +3,25 @@
 import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import type { UserRole } from "@/context/auth-context";
+import { api } from "@/services/api";
+import { toast } from "sonner";
+import { UserRole } from "@/context/auth-context";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-  const { login } = useAuth();
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("demo123");
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Form states
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [storeName, setStoreName] = useState(""); // Only for Seller
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRole) {
       setError("Please select a role");
@@ -27,22 +32,35 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const user = await login(email, password);
+      const endpoint =
+        selectedRole === "SELLER"
+          ? "/auth/register/seller"
+          : "/auth/register/buyer";
 
-      if (user.role !== selectedRole) {
-        setError(
-          `Login failed. This account is a ${user.role.toLowerCase()}, not a ${selectedRole.toLowerCase()}.`
-        );
-        return;
+      const payload: any = {
+        name,
+        email,
+        password,
+      };
+
+      if (selectedRole === "SELLER") {
+        payload.storeName = storeName;
       }
 
-      const rolePath = user.role.toLowerCase();
-      router.push(`/${rolePath}`);
+      await api.post(endpoint, payload);
+
+      toast.success("Registration successful! Please login.");
+      router.push("/login");
     } catch (err: any) {
+      console.error("Registration error:", err);
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
+      } else if (Array.isArray(err.response?.data?.errors)) {
+        // Handle validation errors array from express-validator
+        const firstError = err.response.data.errors[0];
+        setError(firstError.msg || "Validation error");
       } else {
-        setError("Login failed. Please check your credentials.");
+        setError("Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -58,42 +76,36 @@ export default function LoginPage() {
     {
       id: "BUYER",
       name: "Buyer",
-      description: "Browse and purchase accessories",
+      description: "Join to shop",
       icon: "🛍️",
     },
     {
       id: "SELLER",
       name: "Seller",
-      description: "Sell your accessories",
+      description: "Join to sell",
       icon: "🏪",
-    },
-    {
-      id: "ADMIN",
-      name: "Admin",
-      description: "Manage the marketplace",
-      icon: "⚙️",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="bg-card rounded-2xl shadow-lg p-8 border border-border">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <span className="text-3xl">✨</span>
+              <span className="text-3xl">🚀</span>
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              Starpearl
+              Join Starpearl
             </h1>
-            <p className="text-muted-foreground">Welcome back</p>
+            <p className="text-muted-foreground">Create your account</p>
           </div>
 
           <div className="mb-8">
             <label className="block text-sm font-semibold text-foreground mb-4">
-              Select Your Role
+              I want to be a...
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {roles.map((role) => (
                 <button
                   key={role.id}
@@ -108,15 +120,48 @@ export default function LoginPage() {
                   <div className="text-xs font-semibold text-foreground">
                     {role.name}
                   </div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {role.description}
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             {error && (
               <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
                 {error}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
+            </div>
+
+            {selectedRole === "SELLER" && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Store Name
+                </label>
+                <input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="My Awesome Shop"
+                  className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
               </div>
             )}
 
@@ -145,7 +190,12 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 required
+                minLength={6}
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Must be at least 6 characters with uppercase, lowercase, and
+                number.
+              </p>
             </div>
 
             <Button
@@ -153,20 +203,20 @@ export default function LoginPage() {
               disabled={loading || !selectedRole}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">
-              Don't have an account?{" "}
+              Already have an account?{" "}
             </span>
-            <a
-              href="/register"
+            <Link
+              href="/login"
               className="text-primary font-semibold hover:underline"
             >
-              Register
-            </a>
+              Sign In
+            </Link>
           </div>
         </div>
       </div>

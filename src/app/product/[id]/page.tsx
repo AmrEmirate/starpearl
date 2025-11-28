@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation"; // Import useRouter
+import { useParams, useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -22,13 +22,14 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api } from "@/services/api"; // Service API kita
+import { api } from "@/services/api";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hooks/use-auth"; // Import useAuth
-import { toast } from "sonner"; // Import toast untuk notifikasi
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 import Link from "next/link";
+import { Star } from "lucide-react";
+import { SubmitReviewForm } from "@/components/product/submit-review-form";
 
-// Tipe data detail untuk produk
 interface ProductDetail {
   id: string;
   name: string;
@@ -42,48 +43,32 @@ interface ProductDetail {
   };
 }
 
-// Tipe data review (masih statis untuk sekarang)
 interface Review {
   id: string;
-  author: string;
   rating: number;
-  date: string;
-  comment: string;
-  avatar: string;
+  content: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+  };
 }
 
-// Kita masih gunakan mockReviews untuk sementara
-const mockReviews: Review[] = [
-  {
-    id: "r1",
-    author: "Gisella",
-    rating: 5,
-    date: "October 20, 2025",
-    comment: "Absolutely love this necklace! It's so delicate and beautiful.",
-    avatar: "/placeholder-user.jpg",
-  },
-  {
-    id: "r2",
-    author: "Reina",
-    rating: 4,
-    date: "October 18, 2025",
-    comment: "Great quality for the price. Looks exactly like the picture.",
-    avatar: "/placeholder-user.jpg",
-  },
-];
-
 export default function ProductDetailPage() {
-  const params = useParams(); // Mengambil parameter URL
-  const { id } = params; // Dapatkan 'id' produk
-  const router = useRouter(); // Inisialisasi router
-  const { isAuthenticated } = useAuth(); // Dapatkan status auth
+  const params = useParams();
+  const { id } = params;
+  const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1); // State untuk kuantitas
+  const [quantity, setQuantity] = useState(1);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  // Fungsi untuk format mata uang
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -92,14 +77,28 @@ export default function ProductDetailPage() {
     }).format(amount);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
+  };
+
+  const calculateAverageRating = () => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return (sum / reviews.length).toFixed(1);
+  };
+
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return; // Jangan lakukan apa-apa jika tidak ada ID
+      if (!id) return;
 
       try {
         setLoading(true);
         setError(null);
-        // Panggil API backend kita menggunakan 'id'
         const response = await api.get(`/products/${id}`);
         setProduct(response.data.data);
       } catch (err: any) {
@@ -115,9 +114,26 @@ export default function ProductDetailPage() {
     };
 
     fetchProduct();
-  }, [id]); // Jalankan ulang jika 'id' berubah
+  }, [id]);
 
-  // --- FUNGSI BARU UNTUK ADD TO CART ---
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id) return;
+
+      try {
+        setLoadingReviews(true);
+        const response = await api.get(`/reviews/${id}`);
+        setReviews(response.data.data);
+      } catch (err: any) {
+        console.error("Failed to fetch reviews", err);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+
+    fetchReviews();
+  }, [id]);
+
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
       toast.error("Please login to add items to your cart.");
@@ -128,7 +144,6 @@ export default function ProductDetailPage() {
     if (!product) return;
 
     try {
-      // Panggil API backend
       await api.post("/cart", {
         productId: product.id,
         quantity: quantity,
@@ -136,12 +151,38 @@ export default function ProductDetailPage() {
       toast.success(`${product.name} added to cart!`);
     } catch (err: any) {
       console.error("Failed to add to cart", err);
-      const message = err.response?.data?.message || "Failed to add item to cart.";
+      const message =
+        err.response?.data?.message || "Failed to add item to cart.";
       toast.error(message);
     }
   };
 
-  // Tampilan Skeleton saat loading
+  const handleReviewSubmit = async (rating: number, content: string) => {
+    if (!isAuthenticated) {
+      toast.error("Please login to submit a review.");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      await api.post(`/reviews/${id}`, {
+        rating,
+        content: content || undefined,
+      });
+      toast.success("Review submitted successfully!");
+
+      const response = await api.get(`/reviews/${id}`);
+      setReviews(response.data.data);
+    } catch (err: any) {
+      console.error("Failed to submit review", err);
+      const message = err.response?.data?.message || "Failed to submit review.";
+      toast.error(message);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   const ProductSkeleton = () => (
     <div className="grid md:grid-cols-2 gap-12">
       <Skeleton className="w-full aspect-square rounded-lg" />
@@ -180,8 +221,11 @@ export default function ProductDetailPage() {
   }
 
   if (!product) {
-    return null; // Seharusnya tidak terjadi jika tidak loading atau error
+    return null;
   }
+
+  const averageRating = calculateAverageRating();
+  const hasUserReviewed = reviews.some((review) => review.user.id === user?.id);
 
   return (
     <main className="min-h-screen bg-background">
@@ -229,32 +273,49 @@ export default function ProductDetailPage() {
           {/* Product Details */}
           <div className="flex flex-col space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                {product.name}
+              </h1>
               <p className="text-lg text-muted-foreground mt-2">
                 Sold by{" "}
                 <Link
-                  href={`/store/${product.store.id}`} // Nanti kita buat halaman toko
+                  href={`/store/${product.store.id}`}
                   className="text-primary hover:underline"
                 >
                   {product.store.name}
                 </Link>
               </p>
+
+              {/* Average Rating Display */}
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span className="ml-1 font-semibold text-foreground">
+                      {averageRating}
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    ({reviews.length} review{reviews.length > 1 ? "s" : ""})
+                  </span>
+                </div>
+              )}
             </div>
             <p className="text-4xl font-extrabold text-foreground">
               {formatCurrency(product.price)}
             </p>
 
             {product.stock > 0 ? (
-                <Badge className="self-start bg-green-100 text-green-800">
-                  In Stock ({product.stock} available)
-                </Badge>
-              ) : (
-                <Badge variant="destructive" className="self-start">
-                  Out of Stock
-                </Badge>
+              <Badge className="self-start bg-green-100 text-green-800">
+                In Stock ({product.stock} available)
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="self-start">
+                Out of Stock
+              </Badge>
             )}
 
-            {/* --- Tombol Kuantitas --- */}
+            {/* Quantity Selector */}
             <div className="flex items-center gap-4">
               <span className="text-foreground font-medium">Quantity:</span>
               <div className="flex items-center border border-border rounded-lg">
@@ -269,7 +330,9 @@ export default function ProductDetailPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  onClick={() =>
+                    setQuantity(Math.min(product.stock, quantity + 1))
+                  }
                   disabled={quantity >= product.stock}
                 >
                   +
@@ -281,59 +344,104 @@ export default function ProductDetailPage() {
               size="lg"
               className="w-full text-lg py-6"
               disabled={product.stock === 0}
-              onClick={handleAddToCart} // Tambahkan onClick di sini
+              onClick={handleAddToCart}
             >
               🛒 Add to Cart
             </Button>
-            
+
             <Separator />
 
             {/* Description */}
             <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Description</h3>
-                <p className="text-foreground/80 whitespace-pre-wrap">
-                  {product.description}
-                </p>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Description
+              </h3>
+              <p className="text-foreground/80 whitespace-pre-wrap">
+                {product.description}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Reviews Section */}
-        <div className="mt-20">
+        <div className="mt-20 space-y-8">
+          {/* Submit Review Form - Only show if authenticated and hasn't reviewed */}
+          {isAuthenticated && !hasUserReviewed && (
+            <SubmitReviewForm
+              productId={id as string}
+              onReviewSubmitted={() => {}}
+              isLoading={isSubmittingReview}
+              onSubmit={handleReviewSubmit}
+            />
+          )}
+
+          {/* Reviews List */}
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Customer Reviews</CardTitle>
               <CardDescription>
-                See what others think about this product.
+                {reviews.length > 0
+                  ? "See what others think about this product."
+                  : "No reviews yet. Be the first to review this product!"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {mockReviews.map((review) => (
-                <div key={review.id} className="flex gap-4">
-                  <Avatar>
-                    <AvatarImage src={review.avatar} />
-                    <AvatarFallback>{review.author[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-foreground">{review.author}</p>
-                      <p className="text-sm text-muted-foreground">{review.date}</p>
+              {loadingReviews ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="w-10 h-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-16 w-full" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      {/* Bintang Rating */}
-                      {[...Array(5)].map((_, i) => (
-                        <span
-                          key={i}
-                          className={i < review.rating ? "text-yellow-400" : "text-gray-300"}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-foreground/90">{review.comment}</p>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : reviews.length > 0 ? (
+                reviews.map((review) => (
+                  <div key={review.id} className="flex gap-4">
+                    <Avatar>
+                      <AvatarImage src={review.user.avatarUrl || undefined} />
+                      <AvatarFallback>
+                        {review.user.name?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-foreground">
+                          {review.user.name || "Anonymous User"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(review.createdAt)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < review.rating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      {review.content && (
+                        <p className="mt-2 text-foreground/90">
+                          {review.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  No reviews available for this product yet.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -342,4 +450,4 @@ export default function ProductDetailPage() {
       <Footer />
     </main>
   );
-}   
+}
