@@ -3,9 +3,33 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useStats } from "@/hooks/use-stats";
+import { useState, useEffect } from "react";
 
 export function HeroSection() {
   const { stats, loading } = useStats();
+
+  const [banner, setBanner] = useState({
+    title: "Discover Amazing Products",
+    description:
+      "Explore curated collections from trusted sellers and join a vibrant community of shoppers and creators.",
+    buttonText: "Start Shopping →",
+    buttonLink: "/browse",
+  });
+
+  useEffect(() => {
+    const savedBanners = localStorage.getItem("admin_banners");
+    if (savedBanners) {
+      try {
+        const parsed = JSON.parse(savedBanners);
+        const active = parsed.find((b: any) => b.isActive);
+        if (active) {
+          setBanner(active);
+        }
+      } catch (e) {
+        console.error("Failed to load banner", e);
+      }
+    }
+  }, []);
 
   const formatNumber = (num: number) => {
     if (num >= 1000) {
@@ -21,21 +45,20 @@ export function HeroSection() {
           <div className="flex flex-col gap-6">
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight text-balance">
-                Discover Amazing Products
+                {banner.title}
               </h1>
               <p className="text-lg text-muted-foreground max-w-md">
-                Explore curated collections from trusted sellers and join a
-                vibrant community of shoppers and creators.
+                {banner.description}
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/browse">
+              <Link href={banner.buttonLink}>
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
                 >
-                  Start Shopping →
+                  {banner.buttonText}
                 </Button>
               </Link>
               <Link href="#features">

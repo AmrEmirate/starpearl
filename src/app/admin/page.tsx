@@ -103,6 +103,81 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bg-card border border-border rounded-lg p-6">
+            <div className="text-3xl mb-3">💰</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Service Fees
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Configure platform service fee thresholds and amounts.
+            </p>
+            <Link href="/admin/fees">
+              <Button variant="outline" className="w-full">
+                Manage Fees
+              </Button>
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="text-3xl mb-3">🎨</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Content & Banners
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Update homepage banners and featured content.
+            </p>
+            <Link href="/admin/content">
+              <Button variant="outline" className="w-full">
+                Manage Content
+              </Button>
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="text-3xl mb-3">🎫</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Promotions
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Create platform-wide vouchers and discounts.
+            </p>
+            <Link href="/admin/promotions">
+              <Button variant="outline" className="w-full">
+                Manage Vouchers
+              </Button>
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="text-3xl mb-3">📊</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Reports & Analytics
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              View sales trends, revenue, and user growth.
+            </p>
+            <Link href="/admin/reports">
+              <Button variant="outline" className="w-full">
+                View Reports
+              </Button>
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <div className="text-3xl mb-3">⚖️</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Dispute Resolution
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Handle refunds and buyer-seller conflicts.
+            </p>
+            <Link href="/admin/disputes">
+              <Button variant="outline" className="w-full">
+                Manage Disputes
+              </Button>
+            </Link>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
             <div className="text-3xl mb-3">🛡️</div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
               Community Moderation

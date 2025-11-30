@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
@@ -54,6 +55,17 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
+  // Fee Settings State
+  const [feeSettings, setFeeSettings] = useState({
+    minFreeThreshold: 50000,
+    feeAmount: 1000,
+    feeMultiplier: 100000,
+  });
+
+  // Voucher State
+  const [voucherCode, setVoucherCode] = useState("");
+  const [discount, setDiscount] = useState(0);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/login");
@@ -62,6 +74,7 @@ export default function CheckoutPage() {
 
     if (isAuthenticated) {
       fetchData();
+      fetchFeeSettings();
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -90,6 +103,50 @@ export default function CheckoutPage() {
       toast.error("Failed to load checkout data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFeeSettings = async () => {
+    try {
+      const { data } = await api.get("/admin/settings");
+      if (data.data) {
+        setFeeSettings(data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch fee settings", error);
+    }
+  };
+
+  const handleApplyVoucher = async () => {
+    if (!voucherCode) return;
+
+    try {
+      // Fetch all active promotions to validate
+      const { data } = await api.get("/admin/promotions");
+      const vouchers = data.data;
+      const voucher = vouchers.find(
+        (v: any) => v.code === voucherCode && v.isActive
+      );
+
+      if (voucher) {
+        if (cart && cart.total >= Number(voucher.minSpend || 0)) {
+          setDiscount(Number(voucher.discountValue));
+          toast.success("Voucher applied successfully!");
+        } else {
+          toast.error(
+            `Minimum spend of Rp ${Number(
+              voucher.minSpend || 0
+            ).toLocaleString()} required`
+          );
+          setDiscount(0);
+        }
+      } else {
+        toast.error("Invalid or inactive voucher code");
+        setDiscount(0);
+      }
+    } catch (error) {
+      console.error("Failed to validate voucher", error);
+      toast.error("Failed to validate voucher");
     }
   };
 
@@ -173,9 +230,12 @@ export default function CheckoutPage() {
   }
 
   const subtotal = cart.total;
-  const serviceFee = subtotal < 50000 ? 0 : Math.ceil(subtotal / 100000) * 1000;
+  const serviceFee =
+    subtotal < feeSettings.minFreeThreshold
+      ? 0
+      : Math.ceil(subtotal / feeSettings.feeMultiplier) * feeSettings.feeAmount;
   const shipping = subtotal > 200000 ? 0 : 25000;
-  const total = subtotal + shipping + serviceFee;
+  const total = Math.max(0, subtotal + shipping + serviceFee - discount);
 
   return (
     <div className="min-h-screen bg-background py-12">
@@ -304,6 +364,27 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Service Fee</span>
                   <span>{formatCurrency(serviceFee)}</span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount ({voucherCode})</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="py-4 border-t border-border">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Voucher Code"
+                    value={voucherCode}
+                    onChange={(e) =>
+                      setVoucherCode(e.target.value.toUpperCase())
+                    }
+                  />
+                  <Button variant="outline" onClick={handleApplyVoucher}>
+                    Apply
+                  </Button>
                 </div>
               </div>
 

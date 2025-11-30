@@ -266,7 +266,7 @@ export default function BrowsePage() {
                     <ProductSkeleton key={i} />
                   ))
                 : products.map((product) => (
-                    <Link href={`/products/${product.id}`} key={product.id}>
+                    <Link href={`/product/${product.id}`} key={product.id}>
                       <Card className="overflow-hidden transition-all hover:shadow-lg h-full flex flex-col">
                         <CardHeader className="p-0">
                           <AspectRatio ratio={1 / 1}>
