@@ -5,39 +5,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import type { UserRole } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("demo@example.com");
   const [password, setPassword] = useState("demo123");
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRole) {
-      setError("Please select a role");
-      return;
-    }
-
     setLoading(true);
     setError("");
 
     try {
       const user = await login(email, password);
 
-      if (user.role !== selectedRole) {
-        setError(
-          `Login failed. This account is a ${user.role.toLowerCase()}, not a ${selectedRole.toLowerCase()}.`
-        );
-        return;
-      }
-
       const rolePath = user.role.toLowerCase();
-      router.push(`/${rolePath}`);
+      if (user.role === "ADMIN") {
+        router.push("/admin/dashboard");
+      } else if (user.role === "SELLER") {
+        router.push("/seller");
+      } else {
+        router.push("/");
+      }
     } catch (err: any) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -48,32 +40,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  const roles: {
-    id: UserRole;
-    name: string;
-    description: string;
-    icon: string;
-  }[] = [
-    {
-      id: "BUYER",
-      name: "Buyer",
-      description: "Browse and purchase accessories",
-      icon: "🛍️",
-    },
-    {
-      id: "SELLER",
-      name: "Seller",
-      description: "Sell your accessories",
-      icon: "🏪",
-    },
-    {
-      id: "ADMIN",
-      name: "Admin",
-      description: "Manage the marketplace",
-      icon: "⚙️",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center px-4">
@@ -87,30 +53,6 @@ export default function LoginPage() {
               Starpearl
             </h1>
             <p className="text-muted-foreground">Welcome back</p>
-          </div>
-
-          <div className="mb-8">
-            <label className="block text-sm font-semibold text-foreground mb-4">
-              Select Your Role
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {roles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => setSelectedRole(role.id)}
-                  className={`p-4 rounded-lg border-2 transition-all text-center ${
-                    selectedRole === role.id
-                      ? "border-primary bg-primary/10"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <div className="text-2xl mb-2">{role.icon}</div>
-                  <div className="text-xs font-semibold text-foreground">
-                    {role.name}
-                  </div>
-                </button>
-              ))}
-            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -150,10 +92,47 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              disabled={loading || !selectedRole}
+              disabled={loading}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2"
             >
               {loading ? "Signing in..." : "Sign In"}
+            </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-border hover:bg-accent hover:text-accent-foreground"
+              onClick={() => {
+                window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+              }}
+            >
+              <svg
+                className="mr-2 h-4 w-4"
+                aria-hidden="true"
+                focusable="false"
+                data-prefix="fab"
+                data-icon="google"
+                role="img"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 488 512"
+              >
+                <path
+                  fill="currentColor"
+                  d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"
+                ></path>
+              </svg>
+              Google
             </Button>
           </form>
 
