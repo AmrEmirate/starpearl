@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Header } from "@/components/header";
+
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -248,7 +248,6 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <ProductSkeleton />
         </div>
@@ -260,7 +259,6 @@ export default function ProductDetailPage() {
   if (error) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
           <h1 className="text-2xl font-bold text-destructive">{error}</h1>
         </div>
@@ -278,8 +276,6 @@ export default function ProductDetailPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Header />
-
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid md:grid-cols-2 gap-12">
           {/* Product Images */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Header } from "@/components/header";
+
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -114,7 +114,7 @@ export default function CartPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Skeleton className="h-10 w-1/3 mb-8" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -135,7 +135,7 @@ export default function CartPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-16">
             <div className="text-6xl mb-4 opacity-50">🛒</div>
@@ -146,6 +146,7 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
+
         <Footer />
       </main>
     );
@@ -153,15 +154,7 @@ export default function CartPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Header />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Shopping Cart</h1>
-          <p className="text-muted-foreground">{cart.items.length} items in your cart</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cart.items.map((item) => (
