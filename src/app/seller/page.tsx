@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/services/api";
 
 export default function SellerDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -25,11 +26,10 @@ export default function SellerDashboard() {
     const fetchStats = async () => {
       if (!isAuthenticated || user?.role !== "SELLER") return;
       try {
-        const { api } = require("@/services/api"); // Lazy load to avoid circular deps if any
         const response = await api.get("/stores/dashboard/stats");
         setStats(response.data.data);
       } catch (error) {
-        console.error("Failed to fetch dashboard stats", error);
+        // console.error("Failed to fetch dashboard stats", error);
       } finally {
         setLoadingStats(false);
       }

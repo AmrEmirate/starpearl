@@ -1,5 +1,6 @@
 "use client";
 
+import { api } from "@/services/api";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,8 @@ export function CommunityPreview() {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/community?limit=3`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setPosts(data.data.posts || []);
-        }
+        const response = await api.get("/community?limit=3");
+        setPosts(response.data.data.posts || []);
       } catch (error) {
         console.error("Failed to fetch posts:", error);
       } finally {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/services/api";
 
 interface Stats {
   totalProducts: number;
@@ -23,18 +24,12 @@ export function useStats(): UseStatsReturn {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/stats`
+        const response = await api.get("/stats");
+        setStats(response.data.data);
+      } catch (err: any) {
+        setError(
+          err.response?.data?.message || err.message || "An error occurred"
         );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch stats");
-        }
-
-        const data = await response.json();
-        setStats(data.data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
