@@ -1,10 +1,10 @@
-import type React from "react"
-import { ProtectedRoute } from "@/components/protected-route"
+import type React from "react";
+import { ProtectedRoute } from "@/components/protected-route";
 
 export default function SellerLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  return <ProtectedRoute requiredRole="seller">{children}</ProtectedRoute>
+  return <ProtectedRoute requiredRole="SELLER">{children}</ProtectedRoute>;
 }

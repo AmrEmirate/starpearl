@@ -19,8 +19,34 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface AttributeValue {
+  id: string;
+  value: string;
+}
+
+interface Attribute {
+  id: string;
+  name: string;
+  values: AttributeValue[];
+}
 
 // Schema validasi
 const productSchema = z.object({
@@ -28,6 +54,7 @@ const productSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   price: z.coerce.number().min(100, "Price must be at least 100"),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
+  categoryId: z.string().min(1, "Please select a category"),
   imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
@@ -37,6 +64,10 @@ export default function AddProductPage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
+  const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -45,6 +76,7 @@ export default function AddProductPage() {
       description: "",
       price: 0,
       stock: 0,
+      categoryId: "",
       imageUrl: "",
     },
   });
@@ -52,17 +84,46 @@ export default function AddProductPage() {
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || user?.role !== "SELLER")) {
       router.push("/login");
+      return;
+    }
+
+    if (isAuthenticated && user?.role === "SELLER") {
+      fetchFormData();
     }
   }, [isAuthenticated, authLoading, user, router]);
+
+  const fetchFormData = async () => {
+    try {
+      setLoadingData(true);
+      const [catRes, attrRes] = await Promise.all([
+        api.get("/categories"),
+        api.get("/attributes"),
+      ]);
+      setCategories(catRes.data.data || []);
+      setAttributes(attrRes.data.data || []);
+    } catch (error) {
+      console.error("Failed to fetch form data", error);
+      toast.error("Failed to load categories and attributes");
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const handleAttributeToggle = (attributeValueId: string) => {
+    setSelectedAttributes((prev) =>
+      prev.includes(attributeValueId)
+        ? prev.filter((id) => id !== attributeValueId)
+        : [...prev, attributeValueId]
+    );
+  };
 
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
     try {
-      // Hardcode categoryId for now as per plan
       const payload = {
         ...data,
-        categoryId: "default-category-id",
         imageUrls: data.imageUrl ? [data.imageUrl] : [],
+        attributeValueIds: selectedAttributes,
       };
 
       await api.post("/products", payload);
@@ -78,6 +139,23 @@ export default function AddProductPage() {
 
   if (authLoading || !isAuthenticated || user?.role !== "SELLER") {
     return null;
+  }
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <Skeleton className="h-10 w-1/2 mb-4" />
+          <Skeleton className="h-6 w-3/4 mb-8" />
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -130,6 +208,35 @@ export default function AddProductPage() {
                 )}
               />
 
+              {/* Category Selection */}
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -159,6 +266,41 @@ export default function AddProductPage() {
                   )}
                 />
               </div>
+
+              {/* Attributes Section */}
+              {attributes.length > 0 && (
+                <div className="space-y-4">
+                  <FormLabel>Attributes (Optional)</FormLabel>
+                  <div className="border rounded-lg p-4 space-y-4">
+                    {attributes.map((attr) => (
+                      <div key={attr.id} className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          {attr.name}
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          {attr.values.map((val) => (
+                            <label
+                              key={val.id}
+                              className="flex items-center space-x-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={selectedAttributes.includes(val.id)}
+                                onCheckedChange={() =>
+                                  handleAttributeToggle(val.id)
+                                }
+                              />
+                              <span className="text-sm">{val.value}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <FormDescription>
+                    Select the attributes that apply to this product
+                  </FormDescription>
+                </div>
+              )}
 
               <FormField
                 control={form.control}

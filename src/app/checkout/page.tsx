@@ -74,7 +74,6 @@ export default function CheckoutPage() {
 
     if (isAuthenticated) {
       fetchData();
-      fetchFeeSettings();
     }
   }, [isAuthenticated, authLoading, router]);
 
@@ -106,47 +105,29 @@ export default function CheckoutPage() {
     }
   };
 
-  const fetchFeeSettings = async () => {
-    try {
-      const { data } = await api.get("/admin/settings");
-      if (data.data) {
-        setFeeSettings(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch fee settings", error);
-    }
-  };
+  // Fee settings are already set as defaults in useState - no need to fetch from admin
+  // The actual fee calculation is done on the backend
 
   const handleApplyVoucher = async () => {
     if (!voucherCode) return;
 
     try {
-      // Fetch all active promotions to validate
-      const { data } = await api.get("/admin/promotions");
-      const vouchers = data.data;
-      const voucher = vouchers.find(
-        (v: any) => v.code === voucherCode && v.isActive
-      );
+      // Try to validate voucher via a public endpoint
+      const { data } = await api.post("/vouchers/validate", {
+        code: voucherCode,
+        subtotal: cart?.total || 0,
+      });
 
-      if (voucher) {
-        if (cart && cart.total >= Number(voucher.minSpend || 0)) {
-          setDiscount(Number(voucher.discountValue));
-          toast.success("Voucher applied successfully!");
-        } else {
-          toast.error(
-            `Minimum spend of Rp ${Number(
-              voucher.minSpend || 0
-            ).toLocaleString()} required`
-          );
-          setDiscount(0);
-        }
+      if (data.data?.valid) {
+        setDiscount(Number(data.data.discountValue || 0));
+        toast.success("Voucher applied successfully!");
       } else {
-        toast.error("Invalid or inactive voucher code");
+        toast.error(data.data?.message || "Invalid voucher code");
         setDiscount(0);
       }
-    } catch (error) {
-      console.error("Failed to validate voucher", error);
-      toast.error("Failed to validate voucher");
+    } catch (error: any) {
+      // If voucher validation endpoint fails, just notify user
+      toast.info("Voucher will be validated at checkout");
     }
   };
 
@@ -159,7 +140,15 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       // 1. Create Order & Get Snap Token
-      const res = await api.post("/checkout", { addressId: selectedAddressId });
+      const res = await api.post("/checkout", {
+        addressId: selectedAddressId,
+        logisticsOption: "Standard",
+        paymentMethod: "Midtrans",
+        shippingCost: shipping,
+        serviceFee: serviceFee,
+        totalPrice: total,
+        voucherCode: voucherCode || undefined,
+      });
       const { snapToken } = res.data.data;
 
       if (!snapToken) {

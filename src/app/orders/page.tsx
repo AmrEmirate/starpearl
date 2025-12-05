@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import Link from "next/link";
+import { toast } from "sonner";
+import { CheckCircle } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -40,6 +42,9 @@ export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -61,6 +66,37 @@ export default function OrdersPage() {
       console.error("Failed to fetch orders", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmReceived = async (orderId: string) => {
+    setConfirmingOrderId(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/confirm-received`);
+      toast.success("Order confirmed as received!");
+      fetchOrders(); // Refresh orders
+    } catch (error: any) {
+      console.error("Failed to confirm order", error);
+      toast.error(error.response?.data?.message || "Failed to confirm order");
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "DELIVERED":
+        return "bg-green-600";
+      case "SHIPPED":
+        return "bg-blue-600";
+      case "PROCESSING":
+        return "bg-yellow-600";
+      case "PENDING_PAYMENT":
+        return "bg-orange-500";
+      case "CANCELLED":
+        return "bg-red-600";
+      default:
+        return "";
     }
   };
 
@@ -132,16 +168,8 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <Badge
-                      variant={
-                        order.status === "COMPLETED"
-                          ? "default"
-                          : order.status === "PENDING_PAYMENT"
-                          ? "secondary"
-                          : "outline"
-                      }
-                      className={
-                        order.status === "COMPLETED" ? "bg-green-600" : ""
-                      }
+                      variant="default"
+                      className={getStatusColor(order.status)}
                     >
                       {order.status.replace("_", " ")}
                     </Badge>
@@ -172,6 +200,25 @@ export default function OrdersPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Order Received Button - Only show for SHIPPED orders */}
+                  {order.status === "SHIPPED" && (
+                    <div className="mt-6 pt-4 border-t">
+                      <Button
+                        onClick={() => handleConfirmReceived(order.id)}
+                        disabled={confirmingOrderId === order.id}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {confirmingOrderId === order.id
+                          ? "Confirming..."
+                          : "Order Received"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center mt-2">
+                        Click to confirm you have received this order
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
