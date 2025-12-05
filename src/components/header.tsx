@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -19,13 +19,22 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/browse" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/browse"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
             Products
           </Link>
-          <Link href="/community" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/community"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
             Community
           </Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <Link
+            href="/"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
             About
           </Link>
         </nav>
@@ -39,7 +48,7 @@ export function Header() {
                   🛒 Cart
                 </Button>
               </Link>
-              <Link href={`/${user.role}`}>
+              <Link href={`/${user.role.toLowerCase()}`}>
                 <Button variant="ghost" size="sm">
                   👤 {user.name}
                 </Button>
@@ -71,7 +80,11 @@ export function Header() {
               🛒
             </Button>
           </Link>
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
             {mobileMenuOpen ? "✕" : "☰"}
           </Button>
         </div>
@@ -93,14 +106,20 @@ export function Header() {
             >
               Community
             </Link>
-            <Link href="/" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/"
+              className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
               About
             </Link>
             <div className="pt-3 border-t border-border space-y-2">
               {user ? (
                 <>
-                  <Link href={`/${user.role}`} className="block">
-                    <Button variant="outline" className="w-full border-border bg-transparent">
+                  <Link href={`/${user.role.toLowerCase()}`} className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full border-border bg-transparent"
+                    >
                       👤 {user.name}
                     </Button>
                   </Link>
@@ -116,7 +135,9 @@ export function Header() {
                     </Button>
                   </Link>
                   <Link href="/login" className="block">
-                    <Button className="w-full bg-primary hover:bg-primary/90">Get Started</Button>
+                    <Button className="w-full bg-primary hover:bg-primary/90">
+                      Get Started
+                    </Button>
                   </Link>
                 </>
               )}
@@ -125,5 +146,5 @@ export function Header() {
         </div>
       )}
     </header>
-  )
+  );
 }
